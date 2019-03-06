@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { circle, CRS, Layer, MapOptions, polygon, tileLayer, GridLayer, GridLayerOptions } from 'leaflet';
+import { Control, CRS, GridLayer, GridLayerOptions, Map, MapOptions, tileLayer, LeafletEvent } from 'leaflet';
 import { environment } from 'src/environments/environment';
 
 @Component({
@@ -13,6 +13,12 @@ export class RisingMapComponent implements OnInit {
 
 	public layersControl = null;
 
+	/**
+	 *
+	 *
+	 * @readonly
+	 * @memberof RisingMapComponent
+	 */
 	public get gridOverlay() {
 
 		const Grid: any = GridLayer.extend({
@@ -27,15 +33,55 @@ export class RisingMapComponent implements OnInit {
 			}
 		});
 
-		const opt: GridLayerOptions = {
+		const opt: GridLayerOptions & any = {
 			opacity: 0.75,
-			className: "gridOverlay"
+			className: "gridOverlay",
+			maxZoom: 6,
+			minZoom: 0,
+			maxNativeZoom: 4,
+			minNativeZoom: 0
 		}
 
 		return new Grid(opt);
 	}
 
-	public get fileOverlay() {
+	/**
+	 *
+	 *
+	 * @readonly
+	 * @memberof RisingMapComponent
+	 */
+	public get chunkOverlay() {
+
+		const Grid: any = GridLayer.extend({
+			createTile: (coords) => {
+				var tile = document.createElement('div');
+				tile.style.outline = '1px solid rgba(200, 200, 200, 0.9)';
+				return tile;
+			}
+		});
+
+		const opt: GridLayerOptions & any = {
+			opacity: 0.75,
+			className: "chunkOverlay",
+			tileSize: 256 / 3,
+			maxZoom: 4,
+			minZoom: 4,
+			maxNativeZoom: 4,
+			minNativeZoom: 4
+		}
+
+		return new Grid(opt);
+	}
+
+	/**
+	 *
+	 *
+	 * @readonly
+	 * @type {GridLayer}
+	 * @memberof RisingMapComponent
+	 */
+	public get fileOverlay(): GridLayer {
 
 		const Grid: any = GridLayer.extend({
 			createTile: (coords) => {
@@ -48,24 +94,70 @@ export class RisingMapComponent implements OnInit {
 			}
 		});
 
-		const opt: GridLayerOptions = {
-			maxZoom: 4,
-			minZoom: 4
+		const opt: GridLayerOptions & any = {
+			maxZoom: 6,
+			minZoom: 2,
+			maxNativeZoom: 4,
+			minNativeZoom: 4
 		}
 
 		return new Grid(opt);
 	}
 
+	/**
+	 *
+	 *
+	 * @readonly
+	 * @memberof RisingMapComponent
+	 */
+	public get bottomLeftControl() {
+		const blc: any = Control.extend({
+			onAdd: (map: Map) => {
+				const container = document.createElement("div");
+				container.className = "control-coordinates";
+
+				map.on("mousemove", (event: any) => {
+					const real = {
+						x: Math.floor((event.latlng.lng-16)*3)+1,
+						y: Math.floor((event.latlng.lat+16)*3)+1
+					};
+					const xText = Math.abs(real.x) + (real.x > 0 ? "O" : "W");
+					const yText = Math.abs(real.y) + (real.y < 0 ? "S" : "N");
+					container.innerHTML = `${xText}, ${yText}`;
+				})
+				return container;
+			}
+		});
+
+		return new blc({ position: "bottomleft" });
+	}
+
 	constructor() { }
 
+	/**
+	 *
+	 *
+	 * @param {Map} map
+	 * @memberof RisingMapComponent
+	 */
+	public onMapReady(map: Map) {
+		map.addControl(this.bottomLeftControl);
+	}
 
-	ngOnInit() {
+	/**
+	 *
+	 *
+	 * @memberof RisingMapComponent
+	 */
+	public ngOnInit() {
 		this.options = {
 			layers: [
-				tileLayer(environment.mapTileUrl, { maxZoom: 4, attribution: "RisingMap by Devidian" })
+				tileLayer(environment.mapTileUrl, { tileSize: 256, minZoom: 0, maxNativeZoom: 4, minNativeZoom: 0, maxZoom: 6, attribution: "RisingMap by Devidian" })
 			],
 			zoom: 2,
 
+			maxZoom: 6,
+			minZoom: 0,
 			crs: CRS.Simple,
 			center: [0, 0]
 		};
@@ -73,7 +165,8 @@ export class RisingMapComponent implements OnInit {
 		this.layersControl = {
 			overlays: {
 				// 'File Names': this.fileOverlay,
-				'Tile Grid': this.gridOverlay
+				'Tile Grid': this.gridOverlay,
+				// 'Chunks': this.chunkOverlay
 			}
 		};
 	}
