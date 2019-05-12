@@ -1,6 +1,9 @@
-import { Component, OnInit } from '@angular/core';
-import { Control, CRS, GridLayer, GridLayerOptions, Map, MapOptions, tileLayer, LeafletEvent } from 'leaflet';
+import { Component, OnInit, NgZone } from '@angular/core';
+import { Control, CRS, GridLayer, GridLayerOptions, Map, MapOptions, tileLayer, LeafletEvent, TileLayerOptions, LocationEvent } from 'leaflet';
 import { environment } from 'src/environments/environment';
+import { ActivatedRoute, Router, Params } from '@angular/router';
+import { switchMap } from 'rxjs/operators';
+import { Observer } from 'rxjs';
 
 @Component({
 	selector: 'app-rising-map',
@@ -12,6 +15,10 @@ export class RisingMapComponent implements OnInit {
 	public options: MapOptions = null;
 
 	public layersControl = null;
+
+	protected mapLayer: GridLayer = null;
+	protected cacheBuster: string = "";
+	protected Map: Map = null;
 
 	/**
 	 *
@@ -118,12 +125,12 @@ export class RisingMapComponent implements OnInit {
 
 				map.on("mousemove", (event: any) => {
 					const real = {
-						x: Math.floor((event.latlng.lng-16)*3)+1,
-						y: Math.floor((event.latlng.lat+16)*3)+1
+						x: Math.floor((event.latlng.lng - 16) * 3) + 1,
+						y: Math.floor((event.latlng.lat + 16) * 3) + 1
 					};
 					const xText = Math.abs(real.x) + (real.x > 0 ? "O" : "W");
 					const yText = Math.abs(real.y) + (real.y < 0 ? "S" : "N");
-					container.innerHTML = `${xText}, ${yText}`;
+					container.innerHTML = `Mouse position: ${xText}, ${yText}`;
 				})
 				return container;
 			}
@@ -132,7 +139,60 @@ export class RisingMapComponent implements OnInit {
 		return new blc({ position: "bottomleft" });
 	}
 
-	constructor() { }
+	/**
+	 *
+	 *
+	 * @readonly
+	 * @memberof RisingMapComponent
+	 */
+	public get bottomLeftControlRefreshButton() {
+		const blc: any = Control.extend({
+			onAdd: (map: Map) => {
+				const container = document.createElement("div");
+				container.className = "control-refresh";
+
+				const button = document.createElement("button");
+				button.innerHTML = "refresh map"
+				button.onclick = () => {
+					this.cacheBuster = new Date().getTime() + ''
+					this.mapLayer.redraw();
+				};
+				container.appendChild(button);
+
+				//auto refresh checkbox and number-input
+				const refreshCheck = document.createElement("input");
+				refreshCheck.type = "checkbox";
+
+				const refreshValue = document.createElement("input");
+				refreshValue.type = "number";
+				refreshValue.min = "30";
+				refreshValue.value = "30";
+
+				const rf = () => {
+					refreshCheck.checked ? this.cacheBuster = new Date().getTime() + '' : null;
+					refreshCheck.checked ? this.mapLayer.redraw() : null;
+					let rfTime = Number(refreshValue.value);
+					rfTime = rfTime < 30 ? 30000 : rfTime * 1000;
+					setTimeout(() => {
+						rf();
+					}, rfTime);
+				};
+				rf();
+				container.appendChild(refreshCheck);
+				container.appendChild(refreshValue);
+				return container;
+			}
+		});
+
+		return new blc({ position: "bottomleft" });
+	}
+
+	constructor(
+		private route: ActivatedRoute,
+		private router: Router,
+		private zone: NgZone) {
+
+	}
 
 	/**
 	 *
@@ -142,7 +202,41 @@ export class RisingMapComponent implements OnInit {
 	 */
 	public onMapReady(map: Map) {
 		map.addControl(this.bottomLeftControl);
+		map.addControl(this.bottomLeftControlRefreshButton);
+		map.on('moveend', (event: LocationEvent) => {
+			const real = {
+				x: Math.floor((map.getCenter().lng - 16) * 3) + 1,
+				y: Math.floor((map.getCenter().lat + 16) * 3) + 1
+			};
+			this.navigateTo(real.x, real.y, map.getZoom());
+		});
 	}
+
+	/**
+	 *
+	 *
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {number} [z=2]
+	 * @memberof RisingMapComponent
+	 */
+	public navigateTo(x: number, y: number, z: number = 2): void {
+		this.zone.run(() => {
+			this.router.navigate([x, y, z], { replaceUrl: true });
+		});
+	}
+
+	/**
+	 *
+	 *
+	 * @param {number} x
+	 * @param {number} y
+	 * @memberof RisingMapComponent
+	 */
+	public moveTo(x: number, y: number): void {
+
+	}
+
 
 	/**
 	 *
@@ -150,16 +244,26 @@ export class RisingMapComponent implements OnInit {
 	 * @memberof RisingMapComponent
 	 */
 	public ngOnInit() {
+		const tlo: any & TileLayerOptions = { nocache: () => this.cacheBuster, subdomains: environment.mapTileSubdomains, tileSize: 256, minZoom: 0, maxNativeZoom: 4, minNativeZoom: 0, maxZoom: 6, attribution: "RisingMap by Devidian" };
+		this.mapLayer = tileLayer(environment.mapTileUrl + "?t={nocache}", tlo);
+
+		const posX = this.route.snapshot.params['posX'] || 0;
+		const posY = this.route.snapshot.params['posY'] || 0;
+		const zoom = this.route.snapshot.params['zoom'] || 2;
+
+		const lng = posX != 0 ? ((posX - 1) / 3) + 16 : 0;
+		const lat = posY != 0 ? ((posY - 1) / 3) - 16 : 0;
+
 		this.options = {
 			layers: [
-				tileLayer(environment.mapTileUrl, { tileSize: 256, minZoom: 0, maxNativeZoom: 4, minNativeZoom: 0, maxZoom: 6, attribution: "RisingMap by Devidian" })
+				this.mapLayer
 			],
-			zoom: 2,
+			zoom: zoom,
 
 			maxZoom: 6,
 			minZoom: 0,
 			crs: CRS.Simple,
-			center: [0, 0]
+			center: [lat, lng]
 		};
 
 		this.layersControl = {

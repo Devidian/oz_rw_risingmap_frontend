@@ -4,7 +4,8 @@
 
 export const environment = {
 	production: false,
-	mapTileUrl: "https://rw.map.omega-zirkel.de/map/{z}/{x}/{y}.png"
+	mapTileUrl: "https://{s}.omega-zirkel.de/{z}/{x}/{y}.png",
+	mapTileSubdomains: ['tiles01']
 };
 
 /*

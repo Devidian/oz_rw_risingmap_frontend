@@ -1,4 +1,5 @@
 export const environment = {
 	production: true,
-	mapTileUrl: "/map/{z}/{x}/{y}.png"
+	mapTileUrl: "/map/{z}/{x}/{y}.png",
+	mapTileSubdomains: []
 };
