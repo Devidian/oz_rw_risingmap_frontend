@@ -1,5 +1,9 @@
 ## [Unreleased]
 
+### Added
+- map-id service
+- public environment configuration
+
 ## [0.3.0] - 2019-05-12
 ### Added
 - environment configuration setting `omega`

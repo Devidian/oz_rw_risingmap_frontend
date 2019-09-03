@@ -1,1 +1,1 @@
-<div leaflet [leafletOptions]="options" [leafletLayersControl]="layersControl" (leafletMapReady)="onMapReady($event)"></div>
+<div *ngIf="mapInitialized" leaflet [leafletOptions]="options" [leafletLayersControl]="layersControl" (leafletMapReady)="onMapReady($event)"></div>

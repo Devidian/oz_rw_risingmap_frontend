@@ -1,9 +1,8 @@
-import { Component, OnInit, NgZone } from '@angular/core';
-import { Control, CRS, GridLayer, GridLayerOptions, Map, MapOptions, tileLayer, LeafletEvent, TileLayerOptions, LocationEvent } from 'leaflet';
+import { Component, NgZone, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Control, CRS, GridLayer, GridLayerOptions, LocationEvent, Map, MapOptions, tileLayer, TileLayerOptions } from 'leaflet';
 import { environment } from 'src/environments/environment';
-import { ActivatedRoute, Router, Params } from '@angular/router';
-import { switchMap } from 'rxjs/operators';
-import { Observer } from 'rxjs';
+import { MapIdService } from '../service/map-id.service';
 
 @Component({
 	selector: 'app-rising-map',
@@ -19,6 +18,7 @@ export class RisingMapComponent implements OnInit {
 	protected mapLayer: GridLayer = null;
 	protected cacheBuster: string = "";
 	protected Map: Map = null;
+	public mapInitialized = false;
 
 	/**
 	 *
@@ -29,7 +29,7 @@ export class RisingMapComponent implements OnInit {
 	public get gridOverlay() {
 
 		const Grid: any = GridLayer.extend({
-			createTile: (coords) => {
+			createTile: (coords: { x: any; y: any; z: any; }) => {
 				var tile = document.createElement('div');
 				var label = document.createElement('span');
 				label.className = "coords";
@@ -190,7 +190,9 @@ export class RisingMapComponent implements OnInit {
 	constructor(
 		private route: ActivatedRoute,
 		private router: Router,
-		private zone: NgZone) {
+		private zone: NgZone,
+		private mid: MapIdService
+	) {
 
 	}
 
@@ -237,15 +239,18 @@ export class RisingMapComponent implements OnInit {
 
 	}
 
-
 	/**
 	 *
 	 *
+	 * @protected
+	 * @param {string} url
 	 * @memberof RisingMapComponent
 	 */
-	public ngOnInit() {
-		const tlo: any & TileLayerOptions = { nocache: () => this.cacheBuster, subdomains: environment.mapTileSubdomains, tileSize: 256, minZoom: 0, maxNativeZoom: 4, minNativeZoom: 0, maxZoom: 6, attribution: "RisingMap by Devidian" };
-		this.mapLayer = tileLayer(environment.mapTileUrl + "?t={nocache}", tlo);
+	protected initMap(mapId: string) {
+		// console.log(`Initializing map ${mapId}`);
+		let url = environment.mapTileUrl;
+		const tlo: any & TileLayerOptions = { mapId: mapId, nocache: () => this.cacheBuster, subdomains: environment.mapTileSubdomains, tileSize: 256, minZoom: 0, maxNativeZoom: 4, minNativeZoom: 0, maxZoom: 6, attribution: "RisingMap by Devidian" };
+		this.mapLayer = tileLayer(!mapId ? url.replace("{mapId}/", "") : url + "?t={nocache}", tlo);
 
 		const posX = this.route.snapshot.params['posX'] || 0;
 		const posY = this.route.snapshot.params['posY'] || 0;
@@ -273,6 +278,28 @@ export class RisingMapComponent implements OnInit {
 				// 'Chunks': this.chunkOverlay
 			}
 		};
+		this.mapInitialized = true;
+	}
+
+	/**
+	 *
+	 *
+	 * @memberof RisingMapComponent
+	 */
+	public ngOnInit() {
+
+		if (!environment.mapTileUrl.includes("{mapId}")) {
+			this.initMap(null);
+		} else {
+
+			this.mid.getMapId().subscribe({
+				next: ({ id }: { id: string }) => {
+					this.initMap(id);
+				}, error: (err) => {
+					this.initMap(null);
+				}
+			})
+		}
 	}
 
 }

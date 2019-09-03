@@ -1,5 +1,6 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
+import { HttpClientModule } from '@angular/common/http';
 import { LeafletModule } from '@asymmetrik/ngx-leaflet';
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
@@ -15,6 +16,7 @@ import { HttperrModule } from './httperr/httperr.module';
 		LeafletModule.forRoot(),
 		AppRoutingModule,
 		RisingMapModule,
+		HttpClientModule,
 		HttperrModule
 	],
 	providers: [],
