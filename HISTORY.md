@@ -1,5 +1,6 @@
 ## [Unreleased]
 
+## [0.4.0] - 2019-12-10
 ### Added
 - map-id service
 - public environment configuration
